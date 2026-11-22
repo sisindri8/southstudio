@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: studio-south
+    runtime: node
+    plan: free            # change to starter if you want it always-on
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health     # liveness only (no database call). Do not point this at /api/health/db.
+    envVars:
+      - { key: NODE_VERSION, value: "20" }          # sharp needs Node >= 20.9; "20" resolves to the latest 20.x
+      # NEXT_PUBLIC_* values are baked in at BUILD time: set them before the first deploy.
+      - { key: NEXT_PUBLIC_SUPABASE_URL, sync: false }
+      - { key: NEXT_PUBLIC_SUPABASE_ANON_KEY, sync: false }
+      - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+      - { key: SUPABASE_STORAGE_BUCKET, value: product-images }
+      - { key: NEXT_PUBLIC_SITE_URL, sync: false }   # e.g. https://your-site.onrender.com (NOT localhost)
+      # --- added by the free-tier hardening (all optional; defaults are safe) ---
+      - { key: TRUST_CF_CONNECTING_IP, value: "0" }  # set to 1 ONLY after the domain is proxied through Cloudflare (docs/CLOUDFLARE.md)
+      - { key: AFFILIATE_HOST_POLICY, value: enforce }  # enforce | warn | off  (see docs/SECURITY.md)
+      - { key: AFFILIATE_EXTRA_HOSTS, value: "" }    # e.g. "lenskart.com,firstcry.com"

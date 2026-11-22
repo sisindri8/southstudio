@@ -1,0 +1,21 @@
+# EXAMPLE ONLY (not tested). Copy to .github/workflows/backup.yml in a PRIVATE repository.
+# Secrets needed: DATABASE_URL (Supabase session-pooler string), BACKUP_PASSPHRASE
+name: weekly-db-backup
+on:
+  schedule: [{ cron: "30 2 * * 0" }]   # Sundays 02:30 UTC
+  workflow_dispatch: {}
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install matching pg_dump
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client-17 || sudo apt-get install -y postgresql-client
+      - name: Dump and encrypt
+        env: { DATABASE_URL: "${{ secrets.DATABASE_URL }}", PASS: "${{ secrets.BACKUP_PASSPHRASE }}" }
+        run: |
+          pg_dump "$DATABASE_URL" --schema=public --no-owner --no-privileges --clean --if-exists | gzip -9 \
+            | gpg --batch --yes --passphrase "$PASS" --symmetric --cipher-algo AES256 -o backup.sql.gz.gpg
+          test "$(stat -c%s backup.sql.gz.gpg)" -gt 2000
+      - uses: actions/upload-artifact@v4
+        with: { name: db-backup, path: backup.sql.gz.gpg, retention-days: 60 }
